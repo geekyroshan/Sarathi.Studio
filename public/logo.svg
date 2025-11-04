@@ -1,0 +1,26 @@
+<svg width="400" height="120" viewBox="0 0 400 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- S/8 Infinity Symbol -->
+  <g transform="translate(20, 20)">
+    <!-- Outer path of the S/8 symbol -->
+    <path
+      d="M 45 10 Q 55 5, 60 15 Q 65 25, 55 30 L 35 45 Q 25 50, 20 60 Q 15 70, 25 75 Q 35 80, 45 70"
+      stroke="white"
+      strokeWidth="6"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <!-- Inner circle top -->
+    <circle cx="52" cy="20" r="8" fill="white" />
+    <!-- Inner circle bottom -->
+    <circle cx="28" cy="65" r="8" fill="white" />
+  </g>
+  
+  <!-- Sarathi Studio Text -->
+  <text x="120" y="50" fill="white" fontSize="36" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-0.02em">
+    Sarathi
+  </text>
+  <text x="120" y="85" fill="white" fontSize="36" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-0.02em">
+    Studio
+  </text>
+</svg>
