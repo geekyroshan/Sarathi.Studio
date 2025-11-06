@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { Menu, X } from "lucide-react"
+import { Loader2, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -132,6 +132,8 @@ export default function Home() {
   const [scrollPosition, setScrollPosition] = useState(0)
   const [agentsScrollPosition, setAgentsScrollPosition] = useState(0)
   const [articlesScrollPosition, setArticlesScrollPosition] = useState(0)
+const [isContactSubmitting, setIsContactSubmitting] = useState(false)
+const [activeService, setActiveService] = useState<number | null>(null)
   const { theme } = useTheme()
   const { toast } = useToast()
 
@@ -160,8 +162,9 @@ export default function Home() {
     const interval = setInterval(() => {
       setScrollPosition((prev) => {
         const isMobile = window.innerWidth < 640
-        const cardWidth = isMobile ? window.innerWidth - 64 : 400 // Mobile: full width minus padding, Desktop: 400px
-        const gap = isMobile ? 16 : 24 // gap-4 on mobile (16px), gap-6 on desktop (24px)
+        const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024
+        const cardWidth = isMobile ? (window.innerWidth - 64) : (isTablet ? 360 : 400)
+        const gap = isMobile ? 16 : 24 // gap-4 on mobile (16px), gap-6 on tablet/desktop (24px)
         const scrollDistance = cardWidth + gap
         const maxScroll = scrollDistance * testimonials.length
         const newPosition = prev + scrollDistance
@@ -176,8 +179,9 @@ export default function Home() {
     const interval = setInterval(() => {
       setAgentsScrollPosition((prev) => {
         const isMobile = window.innerWidth < 640
-        const cardWidth = isMobile ? window.innerWidth - 64 : 360 // Mobile: full width minus padding, Desktop: 360px
-        const gap = isMobile ? 16 : 24 // gap-4 on mobile (16px), gap-6 on desktop (24px)
+        const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024
+        const cardWidth = isMobile ? (window.innerWidth - 64) : (isTablet ? 320 : 360) // tablet=320, desktop=360
+        const gap = isMobile ? 16 : 24 // gap-4 on mobile (16px), gap-6 on tablet/desktop (24px)
         const scrollDistance = cardWidth + gap
         const totalCards = 6 // Total number of unique chat cards
         const maxScroll = scrollDistance * totalCards
@@ -193,8 +197,8 @@ export default function Home() {
     const interval = setInterval(() => {
       setArticlesScrollPosition((prev) => {
         const isMobile = window.innerWidth < 640
-        const cardWidth = isMobile ? window.innerWidth - 64 : 288 // Mobile: full width minus padding, Desktop: 288px (w-72)
-        const gap = 16 // gap-4 (16px)
+        const cardWidth = isMobile ? (window.innerWidth - 64) : 288 // tablet/desktop stay 288 (w-72)
+        const gap = isMobile ? 16 : 24
         const scrollDistance = cardWidth + gap
         const maxScroll = scrollDistance * articles.length
         const newPosition = prev + scrollDistance
@@ -205,29 +209,71 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleContactSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleContactSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    // Show success toast notification for 4 seconds
-    toast({
-      title: "Message Sent!",
-      description: "Your message has been sent and one of our representatives will get back to you at the earliest.",
-      duration: 4000,
-    })
+    if (isContactSubmitting) {
+      return
+    }
 
-    // Reset form
-    e.currentTarget.reset()
+    const form = e.currentTarget
+    const formData = new FormData(form)
+
+    const name = (formData.get("name") as string)?.trim() ?? ""
+    const email = (formData.get("email") as string)?.trim() ?? ""
+    const company = (formData.get("company") as string)?.trim() ?? ""
+    const service = (formData.get("service") as string)?.toString() ?? ""
+    const message = (formData.get("message") as string)?.trim() ?? ""
+
+    if (!name || !email || !message) {
+      toast({
+        title: "Missing information",
+        description: "Please add your name, email, and project details before sending.",
+        duration: 4000,
+      })
+      return
+    }
+
+    setIsContactSubmitting(true)
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, company, service, message }),
+      })
+
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+
+      form.reset()
+
+      toast({
+        title: "Message sent!",
+        description: "Thanks for reaching out. Our team will get back to you shortly.",
+        duration: 4000,
+      })
+    } catch (error) {
+      toast({
+        title: "Unable to send",
+        description: "We couldn't send your message. Please try again or email connect@sarathi.studio.",
+        duration: 5000,
+      })
+    } finally {
+      setIsContactSubmitting(false)
+    }
   }
 
   return (
     <div className={`min-h-screen ${bgClass} relative overflow-hidden`}>
       {/* Grid Background Pattern */}
       <div
-        className={`absolute inset-0 ${theme === "dark" ? "hidden" : theme === "light" ? "opacity-[0.03]" : "opacity-[0.08]"}`}
+        className={`absolute inset-0 ${theme === "dark" ? "hidden" : theme === "default" ? "opacity-[0.05]" : "opacity-[0.08]"}`}
         style={{
           backgroundImage: `
-            linear-gradient(to right, ${theme === "light" ? "#000" : "#fff"} 1px, transparent 1px),
-            linear-gradient(to bottom, ${theme === "light" ? "#000" : "#fff"} 1px, transparent 1px)
+            linear-gradient(to right, ${theme === "default" ? "#fff" : "#000"} 1px, transparent 1px),
+            linear-gradient(to bottom, ${theme === "default" ? "#fff" : "#000"} 1px, transparent 1px)
           `,
           backgroundSize: "80px 80px",
         }}
@@ -236,10 +282,10 @@ export default function Home() {
       {/* Vertical Lines */}
       <div className={`absolute inset-0 pointer-events-none ${theme === "dark" ? "hidden" : ""}`}>
         <div
-          className={`absolute left-[15%] top-0 bottom-0 w-px ${theme === "light" ? "bg-gray-900/10" : "bg-white/10"}`}
+          className={`absolute left-[15%] top-0 bottom-0 w-px ${theme === "default" ? "bg-white/10" : "bg-gray-900/10"}`}
         />
         <div
-          className={`absolute right-[15%] top-0 bottom-0 w-px ${theme === "light" ? "bg-gray-900/10" : "bg-white/10"}`}
+          className={`absolute right-[15%] top-0 bottom-0 w-px ${theme === "default" ? "bg-white/10" : "bg-gray-900/10"}`}
         />
       </div>
 
@@ -985,12 +1031,20 @@ export default function Home() {
                   key={index}
                   onClick={() => {
                     const isMobile = window.innerWidth < 640
-                    const cardWidth = isMobile ? window.innerWidth - 64 : 360
+                    const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024
+                    const cardWidth = isMobile ? (window.innerWidth - 64) : (isTablet ? 320 : 360)
                     const gap = isMobile ? 16 : 24
                     setAgentsScrollPosition(index * (cardWidth + gap))
                   }}
                   className={`h-2 rounded-full transition-all ${
-                    Math.floor(agentsScrollPosition / (window.innerWidth < 640 ? window.innerWidth - 64 + 16 : 384)) %
+                    Math.floor(
+                      agentsScrollPosition /
+                        ((typeof window !== "undefined" && window.innerWidth < 640)
+                          ? window.innerWidth - 64 + 16
+                          : (typeof window !== "undefined" && window.innerWidth < 1024)
+                            ? 320 + 24
+                            : 360 + 24)
+                    ) %
                       6 ===
                     index
                       ? "bg-white w-8"
@@ -1207,11 +1261,14 @@ export default function Home() {
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16">
               {/* Service 1: AI Automation */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 1 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 1 ? null : 1)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-900/30 to-purple-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 animate-pulse" />
                         <svg
@@ -1230,11 +1287,14 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/futuristic-ai-automation-interface-with-neural-net.jpg"
+                        src="/services/ai-automation.jpg"
                         alt="AI Automation"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/futuristic-ai-automation-interface-with-neural-net.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-transparent to-transparent" />
                     </div>
@@ -1244,11 +1304,14 @@ export default function Home() {
               </div>
 
               {/* Service 2: Web Development */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 2 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 2 ? null : 2)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-green-900/30 to-teal-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-teal-500/20 animate-pulse" />
                         <svg
@@ -1267,11 +1330,14 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/modern-responsive-website-design-on-multiple-devic.jpg"
+                        src="/services/web-development.jpg"
                         alt="Web Development"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/modern-responsive-website-design-on-multiple-devic.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-green-900/80 via-transparent to-transparent" />
                     </div>
@@ -1281,11 +1347,14 @@ export default function Home() {
               </div>
 
               {/* Service 3: App Development */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 3 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 3 ? null : 3)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-orange-900/30 to-red-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 to-red-500/20 animate-pulse" />
                         <svg
@@ -1294,21 +1363,20 @@ export default function Home() {
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
+                          <rect x="7" y="2" width="10" height="20" rx="2" ry="2" strokeWidth={1.5} />
+                          <path d="M11 18h2" strokeWidth={1.5} strokeLinecap="round" />
                         </svg>
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/modern-smartphone-with-sleek-mobile-app-interface-.jpg"
+                        src="/services/app-development.jpg"
                         alt="App Development"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/modern-smartphone-with-sleek-mobile-app-interface-.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-orange-900/80 via-transparent to-transparent" />
                     </div>
@@ -1318,11 +1386,14 @@ export default function Home() {
               </div>
 
               {/* Service 4: Chatbot Development */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 4 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 4 ? null : 4)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-pink-900/30 to-purple-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 animate-pulse" />
                         <svg
@@ -1341,11 +1412,14 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/ai-chatbot-interface-with-conversation-bubbles--vi.jpg"
+                        src="/services/chatbot-development.jpg"
                         alt="Chatbot Development"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/ai-chatbot-interface-with-conversation-bubbles--vi.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-pink-900/80 via-transparent to-transparent" />
                     </div>
@@ -1355,11 +1429,14 @@ export default function Home() {
               </div>
 
               {/* Service 5: Workflow Automation */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 5 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 5 ? null : 5)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-cyan-900/30 to-blue-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 animate-pulse" />
                         <svg
@@ -1378,11 +1455,14 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/automated-workflow-diagram-with-connected-nodes--p.jpg"
+                        src="/services/workflow-automation.jpg"
                         alt="Workflow Automation"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/automated-workflow-diagram-with-connected-nodes--p.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-cyan-900/80 via-transparent to-transparent" />
                     </div>
@@ -1392,11 +1472,14 @@ export default function Home() {
               </div>
 
               {/* Service 6: Data Analysis */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 6 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 6 ? null : 6)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-yellow-900/30 to-orange-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 animate-pulse" />
                         <svg
@@ -1405,21 +1488,25 @@ export default function Home() {
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
-                          <path
+                          <path d="M3 3v18h18" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                          <polyline
+                            points="7 15 11 11 15 15 21 9"
+                            strokeWidth={1.5}
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                           />
                         </svg>
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/data-analytics-dashboard-with-charts--graphs--pie-.jpg"
+                        src="/services/data-analysis.jpg"
                         alt="Data Analysis"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/data-analytics-dashboard-with-charts--graphs--pie-.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-yellow-900/80 via-transparent to-transparent" />
                     </div>
@@ -1429,11 +1516,14 @@ export default function Home() {
               </div>
 
               {/* Service 7: API Integration */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 7 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 7 ? null : 7)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-900/30 to-purple-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 animate-pulse" />
                         <svg
@@ -1452,11 +1542,14 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/api-integration-architecture-with-connected-servic.jpg"
+                        src="/services/api-integration.jpg"
                         alt="API Integration"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/api-integration-architecture-with-connected-servic.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/80 via-transparent to-transparent" />
                     </div>
@@ -1466,11 +1559,14 @@ export default function Home() {
               </div>
 
               {/* Service 8: Database Solutions */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 8 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 8 ? null : 8)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-900/30 to-green-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-green-500/20 animate-pulse" />
                         <svg
@@ -1489,11 +1585,14 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/modern-database-servers--cloud-database-architectu.jpg"
+                        src="/services/database-solutions.jpg"
                         alt="Database Solutions"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/modern-database-servers--cloud-database-architectu.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/80 via-transparent to-transparent" />
                     </div>
@@ -1503,11 +1602,14 @@ export default function Home() {
               </div>
 
               {/* Service 9: Custom Solutions */}
-              <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden">
+              <div
+                className={`group relative bg-white/5 backdrop-blur-sm rounded-3xl p-6 sm:p-8 border border-dashed border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden ${activeService === 9 ? 'active' : ''} cursor-pointer sm:cursor-default`}
+                onClick={() => setActiveService(activeService === 9 ? null : 9)}
+              >
                 <div className="relative z-10">
                   <div className="aspect-[4/3] mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-rose-900/30 to-pink-900/30 flex items-center justify-center relative">
                     {/* Default Icon - hidden on mobile, shown on desktop until hover */}
-                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
+                    <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-500 opacity-100 group-[.active]:opacity-0 sm:opacity-100 sm:group-hover:opacity-0">
                       <div className="relative w-full h-full flex items-center justify-center">
                         <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 to-pink-500/20 animate-pulse" />
                         <svg
@@ -1526,11 +1628,14 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
+                    <div className="absolute inset-0 opacity-0 group-[.active]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:group-hover:scale-110">
                       <img
-                        src="/puzzle-pieces-coming-together--custom-tailored-sol.jpg"
+                        src="/services/custom-solutions.jpg"
                         alt="Custom Solutions"
                         className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/puzzle-pieces-coming-together--custom-tailored-sol.jpg"
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-rose-900/80 via-transparent to-transparent" />
                     </div>
@@ -1688,12 +1793,20 @@ export default function Home() {
                   key={index}
                   onClick={() => {
                     const isMobile = window.innerWidth < 640
-                    const cardWidth = isMobile ? window.innerWidth - 64 : 400
+                    const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024
+                    const cardWidth = isMobile ? (window.innerWidth - 64) : (isTablet ? 360 : 400)
                     const gap = isMobile ? 16 : 24
                     setScrollPosition(index * (cardWidth + gap))
                   }}
                   className={`h-2 rounded-full transition-all ${
-                    Math.floor(scrollPosition / (window.innerWidth < 640 ? window.innerWidth - 64 + 16 : 424)) %
+                    Math.floor(
+                      scrollPosition /
+                        ((typeof window !== "undefined" && window.innerWidth < 640)
+                          ? window.innerWidth - 64 + 16
+                          : (typeof window !== "undefined" && window.innerWidth < 1024)
+                            ? 360 + 24
+                            : 400 + 24)
+                    ) %
                       testimonials.length ===
                     index
                       ? "bg-white w-8"
@@ -1990,8 +2103,10 @@ export default function Home() {
                     <input
                       type="text"
                       id="name"
+                      name="name"
                       className={`w-full px-4 py-3 rounded-lg border border-dashed ${borderClass} ${cardBgClass} ${textClass} placeholder:${textSecondaryClass} focus:outline-none focus:border-blue-500 transition-colors`}
                       placeholder="Your name"
+                      required
                     />
                   </div>
                   <div>
@@ -2001,8 +2116,10 @@ export default function Home() {
                     <input
                       type="email"
                       id="email"
+                      name="email"
                       className={`w-full px-4 py-3 rounded-lg border border-dashed ${borderClass} ${cardBgClass} ${textClass} placeholder:${textSecondaryClass} focus:outline-none focus:border-blue-500 transition-colors`}
                       placeholder="your@email.com"
+                      required
                     />
                   </div>
                 </div>
@@ -2014,6 +2131,7 @@ export default function Home() {
                   <input
                     type="text"
                     id="company"
+                    name="company"
                     className={`w-full px-4 py-3 rounded-lg border border-dashed ${borderClass} ${cardBgClass} ${textClass} placeholder:${textSecondaryClass} focus:outline-none focus:border-blue-500 transition-colors`}
                     placeholder="Your company name"
                   />
@@ -2025,6 +2143,7 @@ export default function Home() {
                   </label>
                   <select
                     id="service"
+                    name="service"
                     className={`w-full px-4 py-3 rounded-lg border border-dashed ${borderClass} ${cardBgClass} ${textClass} focus:outline-none focus:border-blue-500 transition-colors`}
                   >
                     <option>AI Automation</option>
@@ -2040,22 +2159,28 @@ export default function Home() {
                   </label>
                   <textarea
                     id="message"
+                    name="message"
                     rows={5}
                     className={`w-full px-4 py-3 rounded-lg border border-dashed ${borderClass} ${cardBgClass} ${textClass} placeholder:${textSecondaryClass} focus:outline-none focus:border-blue-500 transition-colors resize-none`}
                     placeholder="Tell us about your project..."
+                    required
                   />
                 </div>
 
                 <Button
                   type="submit"
                   size="lg"
-                  className={`w-full rounded-full px-8 py-6 text-base ${
-                    theme === "light"
-                      ? "bg-gray-900 text-white hover:bg-gray-800"
-                      : "bg-white text-black hover:bg-white/90"
-                  }`}
+                  className={`w-full rounded-full px-8 py-6 text-base bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg hover:shadow-xl hover:from-blue-500 hover:to-blue-400 transition disabled:opacity-60 disabled:cursor-not-allowed`}
+                  disabled={isContactSubmitting}
                 >
-                  Send Message
+                  {isContactSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Sending...
+                    </span>
+                  ) : (
+                    "Send Message"
+                  )}
                 </Button>
               </form>
             </div>

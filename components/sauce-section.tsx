@@ -20,7 +20,7 @@ export function SauceSection() {
   const [stars, setStars] = useState<Star[]>([])
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isHovering, setIsHovering] = useState(false)
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number | null>(null)
 
   useEffect(() => {
     const generateStars = () => {
@@ -160,7 +160,15 @@ export function SauceSection() {
           Don't commit to a service you've gotta pay even when there's no work to give them. With Sarathi Studio, you're
           in complete control!
         </p>
-        <button className="group px-8 py-4 bg-white text-black rounded-full font-semibold text-lg hover:bg-white/90 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-white/20 flex items-center gap-2 mx-auto">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("sarathi-open-chat"))
+            }
+          }}
+          className="group px-8 py-4 bg-white text-black rounded-full font-semibold text-lg hover:bg-white/90 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-white/20 flex items-center gap-2 mx-auto"
+        >
           <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
           View Plans and Pricing
         </button>

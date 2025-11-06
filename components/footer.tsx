@@ -20,7 +20,7 @@ export function Footer() {
           {/* Social Links */}
           <div className="flex items-center gap-4 sm:gap-6 order-3">
             <Link
-              href="https://x.com/sarathi_studio"
+              href="https://x.com/sarathistudioai"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors"
@@ -31,7 +31,7 @@ export function Footer() {
               <span className="sr-only">X (Twitter)</span>
             </Link>
             <Link
-              href="https://instagram.com/sarathi_studio"
+              href="https://instagram.com/studio.sarathi"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors"
@@ -40,7 +40,7 @@ export function Footer() {
               <span className="sr-only">Instagram</span>
             </Link>
             <Link
-              href="https://linkedin.com/company/sarathi-studio"
+              href="https://www.linkedin.com/company/sarathi-studio-ai"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors"
